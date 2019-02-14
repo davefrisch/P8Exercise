@@ -3,12 +3,12 @@ USE Pulse8TestDB
 SELECT	MemberID, FirstName, LastName, MostSevereDiagnosisId, MostSevereDiagnosisDescription, CategoryId, CategoryDescription, CategoryScore, IsMostSevereCategory
 FROM(
 	SELECT		dM.MemberID, dM.FirstName, dM.LastName
-				,CASE WHEN RANK()OVER(PARTITION BY dM.MemberId ORDER BY dD.DiagnosisId) = 1 THEN dD.DiagnosisID END AS MostSevereDiagnosisId/*Identity the lowest DiagnosisId*/
-				,CASE WHEN RANK()OVER(PARTITION BY dM.MemberId ORDER BY dD.DiagnosisId) = 1 THEN dD.DiagnosisDescription END AS MostSevereDiagnosisDescription/*Identify diagnosis description of lowest DiagnosisId*/
+				,CASE WHEN RANK()OVER(PARTITION BY dM.MemberId, dDC.DiagnosisCategoryID ORDER BY dD.DiagnosisId) = 1 THEN dD.DiagnosisID END AS MostSevereDiagnosisId/*Identity the lowest DiagnosisId*/
+				,CASE WHEN RANK()OVER(PARTITION BY dM.MemberId, dDC.DiagnosisCategoryID ORDER BY dD.DiagnosisId) = 1 THEN dD.DiagnosisDescription END AS MostSevereDiagnosisDescription/*Identify diagnosis description of lowest DiagnosisId*/
 				,dDC.DiagnosisCategoryID AS CategoryId
 				,dDC.CategoryDescription
 				,dDC.CategoryScore
-				,CASE WHEN RANK()OVER(PARTITION BY dM.MemberId ORDER BY lDC.DiagnosisCategoryId) = 1 AND lDC.DiagnosisID IS NOT NULL THEN 1 ELSE 0 END AS IsMostSevereCategory /*Identify most severe category and set to 0 if no DiagnosisCategoryId exists*/
+				,CASE WHEN RANK()OVER(PARTITION BY dM.MemberId ORDER BY lDC.DiagnosisCategoryId) = 1 THEN 1 WHEN dDC.DiagnosisCategoryID IS NULL THEN 1 ELSE 0 END AS IsMostSevereCategory /*Identify most severe category and set to 0 if no DiagnosisCategoryId exists*/
 				,ROW_NUMBER()OVER(PARTITION BY dM.MemberId, dDC.DiagnosisCategoryID ORDER BY dD.DiagnosisId) AS SequenceId /*Identify duplicating categories and filter them out in the higher query*/
 	FROM		dbo.Member dM 
 	LEFT JOIN	dbo.MemberDiagnosis lMD 
@@ -48,4 +48,18 @@ FROM	dbo.Member --<- Dimension table for individuals/patients/the insured otherw
 SELECT	*
 FROM	dbo.MemberDiagnosis --<- Looks like a fact table related to members and their associated diagnosis
 
+*/
+
+
+/*
+select	*
+FROM		dbo.Member dM 
+	LEFT JOIN	dbo.MemberDiagnosis lMD 
+				ON lMD.MemberID = dM.MemberID
+	LEFT JOIN	dbo.Diagnosis dD 
+				ON dD.DiagnosisID = lMD.DiagnosisID
+	LEFT JOIN	dbo.DiagnosisCategoryMap lDC 
+				ON lDC.DiagnosisID = lMD.DiagnosisID
+	LEFT JOIN	dbo.DiagnosisCategory dDC 
+				ON dDC.DiagnosisCategoryID = lDC.DiagnosisCategoryID
 */
