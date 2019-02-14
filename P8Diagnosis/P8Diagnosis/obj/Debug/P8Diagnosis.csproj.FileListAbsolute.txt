@@ -1,0 +1,7 @@
+c:\users\df454547\source\repos\P8Diagnosis\P8Diagnosis\bin\Debug\P8Diagnosis.exe.config
+c:\users\df454547\source\repos\P8Diagnosis\P8Diagnosis\bin\Debug\P8Diagnosis.exe
+c:\users\df454547\source\repos\P8Diagnosis\P8Diagnosis\bin\Debug\P8Diagnosis.pdb
+c:\users\df454547\source\repos\P8Diagnosis\P8Diagnosis\obj\Debug\P8Diagnosis.csprojAssemblyReference.cache
+c:\users\df454547\source\repos\P8Diagnosis\P8Diagnosis\obj\Debug\P8Diagnosis.csproj.CoreCompileInputs.cache
+c:\users\df454547\source\repos\P8Diagnosis\P8Diagnosis\obj\Debug\P8Diagnosis.exe
+c:\users\df454547\source\repos\P8Diagnosis\P8Diagnosis\obj\Debug\P8Diagnosis.pdb
