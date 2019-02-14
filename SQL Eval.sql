@@ -21,7 +21,7 @@ FROM(
 				ON dDC.DiagnosisCategoryID = lDC.DiagnosisCategoryID
 )X
 WHERE		SequenceId = 1
-ORDER BY	MemberID, ISNULL(MostSevereDiagnosisId,99), ISNULL(CategoryId,99)
+ORDER BY	ISNULL(CategoryId,99), ISNULL(MostSevereDiagnosisId,99)
 
 /*
 Used RANK for the "MostSevere" columns originally because I was concerned there may have been duplicating diagnoses, and I wanted to see them before I decide how to handle that.

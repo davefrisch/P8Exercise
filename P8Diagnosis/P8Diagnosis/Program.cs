@@ -14,18 +14,12 @@ namespace P8Diagnosis
         //SQL connection string data that is used later on. Easier to drop here and reference the XML table.
         static string pstrServerName = "";
         public static string pstrSQLConnection = "";
-        
+
         public static void Main()
         {
-            //Update public variables to use server in relative file path.
-            pstrServerName = File.ReadLines("ServerName.txt").First(); // gets the first line from file.
-            pstrSQLConnection = @"Data Source=" + pstrServerName + "; Initial Catalog=Pulse8TestDB;Integrated Security=SSPI";
-            Console.WriteLine("Will attempt to use " + pstrServerName + " MS SQL Server Instance.");
-            Console.WriteLine("Entire connection string: " + pstrSQLConnection);
-            Console.WriteLine();
-
             //Had some plans to print out the results to a text file, but dropped them later on because I'm not sure how that might work on other machines.
             //Also, easier to call this method from elsewhere and drop it in the main for initial run.
+            EnterSQLConnectionString();
             InitialMenu();
         }
         public static void InitialMenu()
@@ -40,7 +34,7 @@ namespace P8Diagnosis
             {
                 MemberIdSelection();
             }
-            else if(strSelection.ToUpper()=="EXIT")
+            else if (strSelection.ToUpper() == "EXIT")
             {
                 Environment.Exit(0);
             }
@@ -117,7 +111,7 @@ namespace P8Diagnosis
             Console.Clear();
             string strOrderByList = "";
             //Sort options for displaying values
-            if (strSortValue == "1") { strOrderByList = "MemberId, FirstName, LastName;";}
+            if (strSortValue == "1") { strOrderByList = "MemberId, FirstName, LastName;"; }
             else if (strSortValue == "2") { strOrderByList = "FirstName, LastName, MemberId;"; }
             else if (strSortValue == "3") { strOrderByList = "LastName, FirstName, MemberId;"; }
             else { strOrderByList = "MemberId, FirstName, LastName;"; }
@@ -134,7 +128,7 @@ namespace P8Diagnosis
                 foreach (DataRow row in ds.Tables["MemberList"].Rows)
                 {
                     //Pring out formatted data to match the header alignment
-                    Console.WriteLine(String.Format("|{0,10}|{1,11}|{2,10}|", row["MemberId"].ToString()+" ", row["FirstName"].ToString()+" ", row["LastName"].ToString()+" "));
+                    Console.WriteLine(String.Format("|{0,10}|{1,11}|{2,10}|", row["MemberId"].ToString() + " ", row["FirstName"].ToString() + " ", row["LastName"].ToString() + " "));
                 }
             }
             Console.WriteLine();
@@ -147,32 +141,29 @@ namespace P8Diagnosis
             Console.Clear();
             //The entire query below. Would prefer to use a stored procedure that has this code in production, however.
             string strSQLSyntax = @"
-                                        USE Pulse8TestDB
-
-                                        SELECT MemberID, FirstName, LastName, MostSevereDiagnosisId, MostSevereDiagnosisDescription, CategoryId, CategoryDescription, CategoryScore, IsMostSevereCategory
-                                        FROM(
-                                            SELECT      dM.MemberID, dM.FirstName, dM.LastName
-                                                        , CASE WHEN RANK()OVER(PARTITION BY dM.MemberId ORDER BY dD.DiagnosisId) = 1 THEN dD.DiagnosisID END AS MostSevereDiagnosisId/*Identity the lowest DiagnosisId*/
-                                                        , CASE WHEN RANK()OVER(PARTITION BY dM.MemberId ORDER BY dD.DiagnosisId) = 1 THEN dD.DiagnosisDescription END AS MostSevereDiagnosisDescription/*Identify diagnosis description of lowest DiagnosisId*/
-                                                        , dDC.DiagnosisCategoryID AS CategoryId
-                                                        , dDC.CategoryDescription
-                                                        , dDC.CategoryScore
-                                                        , CASE WHEN RANK()OVER(PARTITION BY dM.MemberId ORDER BY lDC.DiagnosisCategoryId) = 1 AND lDC.DiagnosisID IS NOT NULL THEN 1 ELSE 0 END AS IsMostSevereCategory /*Identify most severe category and set to 0 if no DiagnosisCategoryId exists*/
-                                                        , ROW_NUMBER()OVER(PARTITION BY dM.MemberId, dDC.DiagnosisCategoryID ORDER BY dD.DiagnosisId) AS SequenceId /*Identify duplicating categories and filter them out in the higher query*/
-
-                                            FROM        dbo.Member dM
-                                            LEFT JOIN   dbo.MemberDiagnosis lMD
-                                                        ON lMD.MemberID = dM.MemberID
-                                            LEFT JOIN   dbo.Diagnosis dD
-                                                        ON dD.DiagnosisID = lMD.DiagnosisID
-                                            LEFT JOIN   dbo.DiagnosisCategoryMap lDC
-                                                        ON lDC.DiagnosisID = lMD.DiagnosisID
-                                            LEFT JOIN   dbo.DiagnosisCategory dDC
-                                                        ON dDC.DiagnosisCategoryID = lDC.DiagnosisCategoryID
-                                        )X
-                                        WHERE       SequenceId = 1
-                                                    AND MemberId = " + strMemberId + @"
-                                        ORDER BY    MemberID, ISNULL(MostSevereDiagnosisId, 99), ISNULL(CategoryId, 99)
+                    SELECT	MemberID, FirstName, LastName, MostSevereDiagnosisId, MostSevereDiagnosisDescription, CategoryId, CategoryDescription, CategoryScore, IsMostSevereCategory
+                    FROM(
+	                    SELECT		dM.MemberID, dM.FirstName, dM.LastName
+				                    ,CASE WHEN RANK()OVER(PARTITION BY dM.MemberId, dDC.DiagnosisCategoryID ORDER BY dD.DiagnosisId) = 1 THEN dD.DiagnosisID END AS MostSevereDiagnosisId/*Identity the lowest DiagnosisId*/
+				                    ,CASE WHEN RANK()OVER(PARTITION BY dM.MemberId, dDC.DiagnosisCategoryID ORDER BY dD.DiagnosisId) = 1 THEN dD.DiagnosisDescription END AS MostSevereDiagnosisDescription/*Identify diagnosis description of lowest DiagnosisId*/
+				                    ,dDC.DiagnosisCategoryID AS CategoryId
+				                    ,dDC.CategoryDescription
+				                    ,dDC.CategoryScore
+				                    ,CASE WHEN RANK()OVER(PARTITION BY dM.MemberId ORDER BY lDC.DiagnosisCategoryId) = 1 THEN 1 WHEN dDC.DiagnosisCategoryID IS NULL THEN 1 ELSE 0 END AS IsMostSevereCategory /*Identify most severe category and set to 0 if no DiagnosisCategoryId exists*/
+				                    ,ROW_NUMBER()OVER(PARTITION BY dM.MemberId, dDC.DiagnosisCategoryID ORDER BY dD.DiagnosisId) AS SequenceId /*Identify duplicating categories and filter them out in the higher query*/
+	                    FROM		dbo.Member dM 
+	                    LEFT JOIN	dbo.MemberDiagnosis lMD 
+				                    ON lMD.MemberID = dM.MemberID
+	                    LEFT JOIN	dbo.Diagnosis dD 
+				                    ON dD.DiagnosisID = lMD.DiagnosisID
+	                    LEFT JOIN	dbo.DiagnosisCategoryMap lDC 
+				                    ON lDC.DiagnosisID = lMD.DiagnosisID
+	                    LEFT JOIN	dbo.DiagnosisCategory dDC 
+				                    ON dDC.DiagnosisCategoryID = lDC.DiagnosisCategoryID
+                    )X
+                    WHERE		SequenceId = 1
+                                AND MemberId = " + strMemberId + @"
+                    ORDER BY	ISNULL(CategoryId,99), ISNULL(MostSevereDiagnosisId,99)
             ";
 
             //Dump data to a table
@@ -200,6 +191,46 @@ namespace P8Diagnosis
                         //Being showing the formatted values to line up with the heads.
                         Console.WriteLine(String.Format("|{0,10}|{1,11}|{2,10}|{3,23}|{4,32}|{5,12}|{6,21}|{7,15}|{8,22}|", row["MemberId"].ToString() + " ", row["FirstName"].ToString() + " ", row["LastName"].ToString() + " ", row["MostSevereDiagnosisId"].ToString() + " ", row["MostSevereDiagnosisDescription"].ToString() + " ", row["CategoryId"].ToString() + " ", row["CategoryDescription"].ToString() + " ", row["CategoryScore"].ToString() + " ", row["IsMostSevereCategory"].ToString() + " "));
                     }
+                }
+            }
+        }
+        public static void EnterSQLConnectionString()
+        {            
+            //Update public variables to use server in relative file path.
+            Console.Write("Enter MS SQL Server name and instance name in the format of ServerName\\InstanceName: ");
+            pstrServerName = Console.ReadLine();
+            pstrSQLConnection = @"Data Source=" + pstrServerName + "; Initial Catalog=Pulse8TestDB;Integrated Security=SSPI";
+            Console.WriteLine("Will attempt to use " + pstrServerName + " MS SQL Server Instance.");
+            Console.WriteLine("Entire connection string: " + pstrSQLConnection);
+            Console.WriteLine("Attempting test connection now...");
+            Console.WriteLine();
+            bool bnSQLConnectionTest = SQLServerConnectionTest(pstrSQLConnection);
+            
+            if(bnSQLConnectionTest==false)
+            {
+                Console.Clear();
+                Console.WriteLine("Unable to connect to " + pstrServerName + ". Please try entering the name of the server and the instance again.");
+                Console.WriteLine("Entire connection string attempted was: \n\t" + pstrSQLConnection);
+                EnterSQLConnectionString();
+            }
+            else
+            {
+                Console.Clear();
+                Console.WriteLine("Connection Successful!");
+            }
+         }
+        private static bool SQLServerConnectionTest(string connectionString)
+        {
+            using (SqlConnection connection = new SqlConnection(connectionString))
+            {
+                try
+                {
+                    connection.Open();
+                    return true;
+                }
+                catch (SqlException)
+                {
+                    return false;
                 }
             }
         }
